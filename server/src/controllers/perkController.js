@@ -67,11 +67,37 @@ export async function createPerk(req, res, next) {
     next(err);
   }
 }
-// TODO
 // Update an existing perk by ID and validate only the fields that are being updated 
+// Update an existing perk by ID (without changing category or discountPercent)
 export async function updatePerk(req, res, next) {
-  
+  try {
+    // Disallow changing category & discountPercent
+    const { category, discountPercent, ...allowedUpdates } = req.body;
+
+    // Validate only allowed fields
+    const updateSchema = Joi.object({
+      title: Joi.string().min(2),
+      description: Joi.string().allow(''),
+      merchant: Joi.string().allow('')
+    }).min(1);
+
+    const { value, error } = updateSchema.validate(allowedUpdates, { stripUnknown: true });
+    if (error) return res.status(400).json({ message: error.message });
+
+    const doc = await Perk.findByIdAndUpdate(req.params.id, value, {
+      new: true,
+      runValidators: true
+    });
+
+    if (!doc) return res.status(404).json({ message: 'Perk not found' });
+
+    res.json({ perk: doc });
+  } catch (err) {
+    next(err);
+  }
 }
+
+
 
 
 // Delete a perk by ID
